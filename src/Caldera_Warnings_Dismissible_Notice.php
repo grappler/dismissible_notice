@@ -25,7 +25,7 @@ if ( class_exists( 'Caldera_Warnings_Dismissible_Notice' ) ) {
 class Caldera_Warnings_Dismissible_Notice {
 
 	/**
-	 * The class attribute for notice toggles.
+	 * Define the $ignore_key to be used later
 	 *
 	 * @since 0.1.0
 	 *
@@ -33,7 +33,7 @@ class Caldera_Warnings_Dismissible_Notice {
 	 *
 	 * @var string
 	 */
-	protected static $notice_class = "caldera_admin_nag";
+	protected static $ignore_key = '';
 
 	/**
 	 * The action for the nonce
@@ -53,44 +53,32 @@ class Caldera_Warnings_Dismissible_Notice {
 	 *
 	 * @param string $message The text of the message.
 	 * @param bool $error Optional. Whether to show as error or update. Default is error.
-	 * @param string $cap_check Optional. Minimum user capability to show nag to. Default is "update_options"
+	 * @param string $cap_check Optional. Minimum user capability to show nag to. Default is "manage_options"
 	 * @param string|bool $ignore_key Optional. The user meta key to use for storing if this message has been dismissed by current user or not. If false, it will be generated.
 	 *
 	 * @return string|void Admin notice if is_admin() and not dismissed.
 	 */
-	public static function notice( $message,  $error = true, $cap_check = 'update_options', $ignore_key = false ) {
+	public static function notice( $message, $error = true, $cap_check = 'manage_options', $ignore_key = false ) {
 		if ( is_admin() && ( !defined( 'DOING_AJAX' ) || !DOING_AJAX ) ) {
 			if ( current_user_can( $cap_check ) ) {
 				$user_id = get_current_user_id();
 				if ( ! is_string( $ignore_key ) ) {
-					$ignore_key = md5( $message );
+					$ignore_key = 'cal_wd_ig_' . substr( md5( $message ), 0, 40 );
 				}
 
-				$ignore_key = 'cal_wd_ig_' . substr( $ignore_key, 0, 40 );
-
-				$ignore_key = sanitize_key( $ignore_key );
-//cal_wd_ig_3911b2583433f696e5813a503bbb2e65
-				$dissmised = get_user_meta( $user_id, $ignore_key, true );
-				if ( ! $dissmised ) {
+				$dismissed = get_user_meta( $user_id, sanitize_key( $ignore_key ), true );
+				if ( ! $dismissed ) {
 					if ( $error ) {
 						$class = 'error';
 					} else {
 						$class = 'updated';
 					}
 
-					$hide_attr = $ignore_key . '_id';
-
-					$nonce = wp_create_nonce( self::$nonce_action );
-
-					$dismiss = sprintf(
-						'<a style="float:right;"  href="#" title="Hide This Warning" data-nag="%1s" class="%2s" data-nonce="3%s" id="%4s" data-hide="%5s"><span style="text-decoration: none;color: #000;" class="dashicons dashicons-no-alt" ></span></a>',
-						$ignore_key, self::$notice_class, $nonce, $ignore_key, $hide_attr
-					);
-
-					$out[] = sprintf( '<div class="%1s" id="%2s"><p>', $class, $hide_attr );
-					$out[] = $message . $dismiss;
-					$out[] = "</p></div>";
-
+					$out[] = sprintf( '<div id="%1s" class="%2s notice is-dismissible"><p>', $ignore_key, $class );
+					$out[] = $message;
+					$out[] = wp_nonce_field( self::$nonce_action );
+					$out[] = '</p></div>';
+					self::$ignore_key = $ignore_key;
 					add_action( 'admin_footer', array( __CLASS__, 'js' ) );
 					add_action( 'wp_ajax_caldera_warnings_dismissible_notice', array( __CLASS__, 'ajax_cb' ) );
 
@@ -115,23 +103,15 @@ class Caldera_Warnings_Dismissible_Notice {
 		?>
 		<script>
 			jQuery(document).ready(function($) {
-				var the_class = ".<?php echo self::$notice_class; ?>";
 
-				$( the_class ).click( function ( event ) {
-					var url = ajaxurl;
+				$( ".is-dismissible" ).click( function ( event ) {
 					event.preventDefault();
-					var nag = $( this ).data( 'nag' );
-					var nonce = $( this ).data( 'nonce' );
-					var hide = $( this ).data( 'hide' );
 
 					$.post( ajaxurl, {
 						action: "caldera_warnings_dismissible_notice",
-						url: url,
-						nag: nag,
-						nonce: nonce
-					}).done( function( data ) {
-						$( document.getElementById( hide ) ).slideUp();
-
+						url: ajaxurl,
+						nag: "<?php echo self::$ignore_key ?>",
+						nonce: $( "<?php echo '#' . self::$nonce_action; ?>" ).val()
 					});
 
 				} );
@@ -152,7 +132,7 @@ class Caldera_Warnings_Dismissible_Notice {
 	 * @return bool
 	 */
 	public static function ajax_cb() {
-		if (  ! isset( $_POST[ 'nonce' ] ) || ! wp_verify_nonce( $_POST[ 'nonce' ], self::$nonce_action ) ) {
+		if (  ! isset( $_POST[ 'nonce' ] ) && ! isset( $_POST['message_id'] ) || ! wp_verify_nonce( $_POST[ 'nonce' ], self::$nonce_action ) ) {
 			//return false;
 		}
 
@@ -164,5 +144,3 @@ class Caldera_Warnings_Dismissible_Notice {
 	}
 
 }
-
-
