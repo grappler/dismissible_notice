@@ -3,32 +3,31 @@ A simple way to add an admin nag, that can be dismissed via AJAX.
 ### Example
 Show a warning if current version of PHP is less than 5.3.
 ```php
-    add_action( 'plugins_loaded', 'caeq_bootstrap' );
-    function caeq_bootstrap(){
+add_action( 'plugins_loaded', 'caeq_bootstrap' );
+function caeq_bootstrap(){
 
-    	if (  ! version_compare( PHP_VERSION, '5.3.0', '>=' ) ) {
-    		if ( is_admin() || defined( 'DOING_AJAX' ) && DOING_AJAX ) {
-    			include_once CAEQ_PATH . 'vendor/calderawp/dismissible-notice/src/callback_hook.php';
-    		}
-    
-    		if ( is_admin() ) {
-    			//BIG nope nope nope!
-    
-    			$message = sprintf( __( 'Caldera Easy Queries requires PHP version %1s or later. We strongly recommend PHP 5.4 or later for security and performance reasons. Current version is %2s.', '5.3.0', 'caldera-text-domain' ), PHP_VERSION );
-    			echo caldera_warnings_dismissible_notice( $message, true, 'activate_plugins' );
-    		}
-    
-    	}else{
-    		//bootstrap plugin
-    		require_once( CAEQ_PATH . 'bootstrap.php' );
-    
-    	}
+    if (  ! version_compare( PHP_VERSION, '5.3.0', '>=' ) ) {
+        if ( is_admin() || defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+        	include_once CAEQ_PATH . 'vendor/calderawp/dismissible-notice/src/callback_hook.php';
+        }
+
+        if ( is_admin() ) {
+            //BIG nope nope nope!
+            $message = sprintf( __( 'Caldera Easy Queries requires PHP version %1s or later. We strongly recommend PHP 5.4 or later for security and performance reasons. Current version is %2s.', '5.3.0', 'caldera-text-domain' ), PHP_VERSION );
+            echo caldera_warnings_dismissible_notice( $message, true, 'activate_plugins' );
+        }
+
+    } else {
+        // bootstrap plugin
+        require_once( CAEQ_PATH . 'bootstrap.php' );
+
+    }
 
 }
 ```
 
 ### Backwards Compat and such
-This library was written with PHP 5.2 backwards-compat in mind. Hence the prefixed, instead of namespaced class name. You will also need to manually include the class.
+This library was written with PHP 5.2 backwards-compat in mind. Hence the prefixed, instead of namespaced class name. You will also need to manually include the class. WordPress 3.8 and greater compatable.
 
 
 ### License & Copyright
